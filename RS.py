@@ -124,14 +124,14 @@ rec_intensity /= max_intensity  # 正規化 (0~1)
 
 # 像再生の可視化
 fig, ax = plt.subplots(figsize=(6, 5.5))
-im = ax.imshow(rec_intensity, cmap='gray', extent=extent_mm, origin='lower')
+im = ax.imshow(rec_intensity, cmap='inferno', extent=extent_mm, origin='lower')
 
-ax.set_title("Reconstructed View from Phase-Only CGH (ASM, 0°)")
+ax.set_title("Reconstructed View (ASM, 0°)")
 ax.set_xlabel("x [mm]")
 ax.set_ylabel("y [mm]")
 
 cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-cbar.set_label("Intensity [a.u.]", fontsize=10)
+cbar.set_label("Intensity", fontsize=10)
 
 plt.tight_layout()
 plt.show()
@@ -142,7 +142,7 @@ plt.show()
 fig, ax = plt.subplots(figsize=(7, 6))
 
 im_phase = ax.imshow(cgh_phase, cmap='twilight', extent=extent_mm, aspect='equal', vmin=-np.pi, vmax=np.pi, origin='lower')
-ax.set_title("Extracted Phase-Only CGH Data (at SLM Plane)", fontsize=12)
+ax.set_title("Phase CGH Data (at SLM Plane)", fontsize=12)
 ax.set_xlabel("x [mm]", fontsize=10)
 ax.set_ylabel("y [mm]", fontsize=10)
 
