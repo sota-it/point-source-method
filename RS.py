@@ -106,14 +106,14 @@ cgh_phase = np.angle(cgh_complex)
 
 cgh_phase_only_wavefront = np.exp(1j * cgh_phase)
 
-print("--> Phase-Only CGH is generated.")
+print("--> CGH is generated.")
 
 # =====================================================================
 # 6. 像再生
 # =====================================================================
 extent_mm = [-N_x*pitch/2*1e3, N_x*pitch/2*1e3, -N_y*pitch/2*1e3, N_y*pitch/2*1e3]
 
-print(f"--> Phase-Only CGH to RS plane ... (distance z = {z_rs_to_cgh*1e3:.1f} mm)...")
+print(f"--> CGH to RS plane ... (distance z = {z_rs_to_cgh*1e3:.1f} mm)...")
 
 # 波面を CGH平面から RS平面の位置 (-z) へ逆伝搬
 rs_wave_rec = propagate_asm(cgh_phase_only_wavefront, -z_rs_to_cgh, wavelength, pitch)
