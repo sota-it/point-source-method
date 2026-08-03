@@ -13,7 +13,7 @@ pitch = 2.0e-6               # CGH平面のピクセルピッチ (論文に従�
 k = 2 * np.pi / wavelength
 
 # 論文に基づく距離パラメータ
-D = 10e-3                    # 平面物体からCGHまでの距離 (10 mm または 200 mm)
+D = 200e-3                    # 平面物体からCGHまでの距離 (10 mm または 200 mm)
 z_rs = 5e-3                  # 平面物体からRS面までの距離 (5 mm)
 z_rs_to_cgh = D - z_rs       # RS面からCGH面までの距離
 
