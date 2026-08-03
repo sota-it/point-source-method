@@ -13,7 +13,7 @@ pitch = 2.0e-6               # CGH平面のピクセルピッチ
 k = 2 * np.pi / wavelength
 
 # 論文に基づく距離パラメータ
-D = 200e-3                    # 平面物体からCGHまでの距離 (10 mm または 200 mm)
+D = 10e-3                    # 平面物体からCGHまでの距離 (10 mm または 200 mm)
 z_rs = 5e-3                  # 平面物体からRS面までの距離 (5 mm)
 z_rs_to_cgh = D - z_rs       # RS面からCGH面までの距離
 
@@ -36,7 +36,7 @@ print(f"--> CGH Resolution: {N_x} x {N_y} ({N_x * pitch * 1e3:.2f} mm x {N_y * p
 # =====================================================================
 # 2. 多視点画像群 (Light Field) の読み込みとRS平面波面の計算
 # =====================================================================
-image_folder = r"C:\Lab\Sphere_multiview_output_fullparallax_256x256_z0010"
+image_folder = r"C:\Lab\D_Diamond_multiview_output_fullparallax_256x256_z0010"
 
 # フォルダ内のファイルを取得
 image_paths = sorted(glob.glob(os.path.join(image_folder, "view_*")))
@@ -137,9 +137,9 @@ x = (np.arange(N_x) - N_x // 2) * pitch
 y = (np.arange(N_y) - N_y // 2) * pitch
 X, Y = np.meshgrid(x, y)
 
-theta_x = np.radians(5.0)
-theta_y = np.radians(5.0)
-ref_amp = np.max(1)
+theta_x = np.radians(1.5)
+theta_y = np.radians(1.5)
+ref_amp = np.max(np.abs(cgh_obj_complex))
 
 # 参照波の生成
 ref_wave = ref_amp * np.exp(1j * k * (X * np.sin(theta_x) + Y * np.sin(theta_y)))
