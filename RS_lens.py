@@ -13,7 +13,7 @@ pitch = 2.0e-6               # CGH平面のピクセルピッチ
 k = 2 * np.pi / wavelength
 
 # 論文に基づく距離パラメータ
-D = 10e-3                    # 平面物体からCGHまでの距離 (10 mm または 200 mm)
+D = 200e-3                    # 平面物体からCGHまでの距離 (10 mm または 200 mm)
 z_rs = 5e-3                  # 平面物体からRS面までの距離 (5 mm)
 z_rs_to_cgh = D - z_rs       # RS面からCGH面までの距離
 
@@ -84,7 +84,7 @@ for path in image_paths:
     y_end = (iy + 1) * N_px
     x_start = ix * M_px
     x_end = (ix + 1) * M_px
-
+    
     u_RS[y_start:y_end, x_start:x_end] = RS_val
 
 print("--> RS plane is created.")
