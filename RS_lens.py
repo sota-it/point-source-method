@@ -13,13 +13,13 @@ pitch = 2.0e-6               # CGH平面のピクセルピッチ
 k = 2 * np.pi / wavelength
 
 # 論文に基づく距離パラメータ
-D = 10e-3                    # 平面物体からCGHまでの距離 (10 mm または 200 mm)
+D = 205e-3                    # 平面物体からCGHまでの距離 (205 mm)
 z_rs = 5e-3                  # 平面物体からRS面までの距離 (5 mm)
 z_rs_to_cgh = D - z_rs       # RS面からCGH面までの距離
 
 # レンズ系パラメータ (結像シミュレーション用)
-lens_distance = 500e-3       # CGHからレンズまでの距離 (500 mm)
-pupil_diameter = 5e-3        # レンズの瞳直径 (5 mm)
+lens_distance = 200e-3       # CGHからレンズまでの距離 (200 mm)
+pupil_diameter = 7e-3        # レンズの瞳直径 (7 mm)
 
 # 画像パラメータ (論文に近い構成を想定)
 I_views = 256                 # 水平方向の視点数
