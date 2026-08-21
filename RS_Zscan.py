@@ -103,9 +103,9 @@ def propagate_asm(u_in, z, wavelength, current_pitch):
 # =====================================================================
 # 4. 関数化 (CGH生成 ＆ Zスキャン保存)
 # =====================================================================
-slm_size = 1024  
+slm_size = 1080  
 slm_pitch = 8.0e-6 
-rec_size = 1024
+rec_size = 1080
 
 def generate_reconstruct_and_scan(D_val, output_dir):
     print(f"\n========== Starting process for D = {D_val*1000:.0f} mm ==========")
@@ -122,12 +122,23 @@ def generate_reconstruct_and_scan(D_val, output_dir):
     imag_resized = cv2.resize(np.imag(cgh_original_area).astype(np.float32), (slm_size, slm_size), interpolation=cv2.INTER_AREA)
     cgh_obj_slm = real_resized + 1j * imag_resized
     
-    # バイナリ化 (0 or π)
+   # バイナリ化 (0 or π)
     cgh_phase_binary = np.where(np.cos(np.angle(cgh_obj_slm)) >= 0, 0.0, np.pi)
     slm_8bit = np.round((cgh_phase_binary / (2 * np.pi)) * 255).astype(np.uint8)
     
+    # ---------------------------------------------------
+    # ▼▼▼ CGHをPNGで保存 ▼▼▼
+    os.makedirs(output_dir, exist_ok=True) # ディレクトリがない場合を考慮
+    cgh_filename = os.path.join(output_dir, f"cgh_D{D_val*1000:.0f}mm.png")
+    slm_8bit_flipped = np.flipud(slm_8bit)  # 上下反転して保存
+    cv2.imwrite(cgh_filename, slm_8bit_flipped)
+    print(f"--> Saved CGH image: {cgh_filename}")
+    # ▲▲▲ 追加ここまで ▲▲▲
+    # ---------------------------------------------------
+
     # 照明波面の作成
     cgh_illuminated = np.zeros((rec_size, rec_size), dtype=np.complex64)
+
     c_y, c_x = rec_size // 2, rec_size // 2
     slm_phase_reconstructed = (slm_8bit.astype(np.float32) / 255.0) * 2 * np.pi
     cgh_illuminated[c_y - slm_size//2 : c_y + slm_size//2, c_x - slm_size//2 : c_x + slm_size//2] = np.exp(1j * slm_phase_reconstructed)
