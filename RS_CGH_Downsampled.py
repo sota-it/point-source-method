@@ -50,7 +50,6 @@ for path in image_paths:
     img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
     if img is None: continue
         
-    img = cv2.flip(img, 0).astype(np.float32)
     if img.shape != (N_px, M_px):
         img = cv2.resize(img, (M_px, N_px), interpolation=cv2.INTER_AREA)
 
@@ -111,9 +110,9 @@ def propagate_asm(u_in, z, wavelength, current_pitch):
 # =====================================================================
 # 4. 関数化 (CGH生成 ＆ Zスキャン保存)
 # =====================================================================
-slm_size = 1080  
+slm_size = 32768  
 slm_pitch = 8.0e-6 
-rec_size = 1080
+rec_size = 32768
 
 def generate_reconstruct_and_scan(D_val, output_dir):
     print(f"\n========== Starting process for D = {D_val*1000:.0f} mm ==========")
@@ -139,8 +138,7 @@ def generate_reconstruct_and_scan(D_val, output_dir):
     # CGHをPNGで保存
     os.makedirs(output_dir, exist_ok=True) 
     cgh_filename = os.path.join(output_dir, f"cgh_D{D_val*1000:.0f}mm.png")
-    fliped_slm_8bit = np.flipud(slm_8bit)  # 上下反転して保存
-    cv2.imwrite(cgh_filename, fliped_slm_8bit)
+    cv2.imwrite(cgh_filename, slm_8bit)
     print(f"--> Saved CGH image: {cgh_filename}")
 
     # 照明波面の作成 (以降はSLMサイズでの計算)
@@ -157,6 +155,7 @@ def generate_reconstruct_and_scan(D_val, output_dir):
     z_scan_list = np.arange(-200e-3, 205e-3, 5e-3)
     print(f"--> Scanning from -200mm to +200mm...")
     
+    rec_true_raw = None
     rec_true_enhanced = None
     
     for z_rec in z_scan_list:
@@ -185,27 +184,31 @@ def generate_reconstruct_and_scan(D_val, output_dir):
         cv2.imwrite(os.path.join(dir_enhanced, filename), save_img_enhanced_color)
         
         if np.isclose(z_rec, -D_val):
+            rec_true_raw = raw_rec_intensity.copy()
             rec_true_enhanced = rec_intensity.copy()
             
     if rec_true_enhanced is None:
         img_wave_true = propagate_asm(cgh_illuminated, -D_val, wavelength, slm_pitch)
         raw_t = np.abs(img_wave_true)**2
         if np.max(raw_t) > 0: raw_t /= np.max(raw_t)
+        rec_true_raw = raw_t.copy()
+        
         rec_t = raw_t ** 0.5
         vmax_val_t = np.percentile(rec_t, 99.9)
         rec_true_enhanced = np.clip(rec_t / vmax_val_t, 0.0, 1.0) if vmax_val_t > 0 else np.zeros_like(rec_t)
 
     print("--> Scan complete.")
-    return cgh_phase_binary, rec_true_enhanced
+    # 生データも返すように変更
+    return cgh_phase_binary, rec_true_raw, rec_true_enhanced
 
 # =====================================================================
 # 5. 計算実行
 # =====================================================================
-# D = 10mm
-cgh_10, img_10_true_enh = generate_reconstruct_and_scan(10e-3, "Dice_z_scan_D10mm")
+# D = 10mm (3つの戻り値を受け取る)
+cgh_10, img_10_true_raw, img_10_true_enh = generate_reconstruct_and_scan(10e-3, "Dice_z_scan_D10mm")
 
-# D = 100mm
-cgh_100, img_100_true_enh = generate_reconstruct_and_scan(100e-3, "Dice_z_scan_D100mm")
+# D = 100mm (今回はプロットしませんが、ファイル保存のために実行・取得はします)
+cgh_100, img_100_true_raw, img_100_true_enh = generate_reconstruct_and_scan(100e-3, "Dice_z_scan_D100mm")
 
 # =====================================================================
 # 6. プロット (3枚並べ)
@@ -216,21 +219,21 @@ fig, ax = plt.subplots(1, 3, figsize=(18, 6))
 slm_extent_mm = [-slm_size*slm_pitch/2*1e3, slm_size*slm_pitch/2*1e3, -slm_size*slm_pitch/2*1e3, slm_size*slm_pitch/2*1e3]
 rec_extent_mm = [-rec_size*slm_pitch/2*1e3, rec_size*slm_pitch/2*1e3, -rec_size*slm_pitch/2*1e3, rec_size*slm_pitch/2*1e3]
 
-# ① バイナリCGH (D=10mmのものを使用)
+# ① 左：バイナリCGH (D=10mm)
 im0 = ax[0].imshow(cgh_10, cmap='gray', extent=slm_extent_mm, origin='lower', vmin=0, vmax=np.pi)
 ax[0].set_title("Binary CGH (D=10mm)")
 cbar_phase = fig.colorbar(im0, ax=ax[0], fraction=0.046, pad=0.04)
 cbar_phase.set_ticks([0, np.pi])
 cbar_phase.set_ticklabels(['0', 'π'])
 
-# ② D=10mmの虚像 (エンハンス版を表示)
-im1 = ax[1].imshow(img_10_true_enh, cmap='inferno', extent=rec_extent_mm, origin='lower', vmin=0, vmax=1.0)
-ax[1].set_title("Virtual Image Enhanced (D=10mm)")
+# ② 中央：D=10mmの生データの再生像 (Raw)
+im1 = ax[1].imshow(img_10_true_raw, cmap='inferno', extent=rec_extent_mm, origin='lower', vmin=0, vmax=1.0)
+ax[1].set_title("Virtual Image Raw (D=10mm)")
 fig.colorbar(im1, ax=ax[1], fraction=0.046, pad=0.04)
 
-# ③ D=100mmの虚像 (エンハンス版を表示)
-im2 = ax[2].imshow(img_100_true_enh, cmap='inferno', extent=rec_extent_mm, origin='lower', vmin=0, vmax=1.0)
-ax[2].set_title("Virtual Image Enhanced (D=100mm)")
+# ③ 右：D=10mmの可視化処理した再生像 (Enhanced)
+im2 = ax[2].imshow(img_10_true_enh, cmap='inferno', extent=rec_extent_mm, origin='lower', vmin=0, vmax=1.0)
+ax[2].set_title("Virtual Image Enhanced (D=10mm)")
 fig.colorbar(im2, ax=ax[2], fraction=0.046, pad=0.04)
 
 for a in ax:
