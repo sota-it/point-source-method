@@ -110,9 +110,9 @@ def propagate_asm(u_in, z, wavelength, current_pitch):
 # =====================================================================
 # 4. 関数化 (CGH生成 ＆ Zスキャン保存)
 # =====================================================================
-slm_size = 32768  
+slm_size = 1080  
 slm_pitch = 8.0e-6 
-rec_size = 32768
+rec_size = 1080
 
 def generate_reconstruct_and_scan(D_val, output_dir):
     print(f"\n========== Starting process for D = {D_val*1000:.0f} mm ==========")
