@@ -11,14 +11,14 @@ import gc  # メモリ解放用
 # 1. パラメータ設定
 # =====================================================================
 wavelength = 532e-9          # 光の波長 λ: 532 nm
-pitch = 8.0e-6               # CGH平面の初期ピクセルピッチ (8 um)
+pitch = 0.54e-6               # CGH平面の初期ピクセルピッチ (2 um)
 
-z_rs = 5e-3                  # 平面物体からRS面までの距離 (5 mm)
+z_rs = 5.0e-3                  # 平面物体からRS面までの距離 (5 mm)
 
 # 画像パラメータ (256視点 x 64px)
-I_views = 256                
+I_views = 256               
 J_views = 256                
-M_px = 64                    
+M_px = 64                  
 N_px = 64                    
 
 # 元のピクセル解像度 (16384 x 16384)
@@ -30,7 +30,7 @@ print(f"--> Original RS Resolution: {N_x} x {N_y} ({N_x * pitch * 1e3:.2f} mm x 
 # =====================================================================
 # 2. 多視点画像群の読み込みとRS平面波面の計算
 # =====================================================================
-image_folder = r"C:\Lab\Dice_64px_multiview_output_fullparallax_256x256_z0005" # フォルダ名適宜変更
+image_folder = r"C:\Lab\Mask_Dice2_64px_multiview_output_fullparallax_256x256_z0005" # フォルダ名適宜変更
 image_paths = sorted(glob.glob(os.path.join(image_folder, "view_*")))
 
 if len(image_paths) == 0:
@@ -51,7 +51,10 @@ for path in image_paths:
     if img is None: continue
         
     if img.shape != (N_px, M_px):
-        img = cv2.resize(img, (M_px, N_px), interpolation=cv2.INTER_AREA)
+        # リサイズではなく、元画像の中央 (M_px, N_px) を切り出す
+        h_orig, w_orig = img.shape
+        cy, cx = h_orig // 2, w_orig // 2
+        img = img[cy - N_px//2 : cy + N_px//2, cx - M_px//2 : cx + M_px//2]
 
     img = np.sqrt(np.maximum(img, 0)) 
     random_phase = np.random.uniform(0, 2 * np.pi, size=(N_px, M_px))
@@ -110,23 +113,27 @@ def propagate_asm(u_in, z, wavelength, current_pitch):
 # =====================================================================
 # 4. 関数化 (CGH生成 ＆ Zスキャン保存)
 # =====================================================================
-slm_size = 1080  
-slm_pitch = 8.0e-6 
-rec_size = 1080
+slm_size = 8192  
+slm_pitch = 0.54e-6 
+rec_size = 8192
 
 def generate_reconstruct_and_scan(D_val, output_dir):
-    print(f"\n========== Starting process for D = {D_val*1000:.0f} mm ==========")
-    z_rs_to_cgh = D_val - z_rs
+    print(f"\n========== Starting process for D (RS to CGH) = {D_val*1000:.0f} mm ==========")
+    
+    # 【変更点1】RS面からCGH面までの距離をそのまま D_val とする
+    z_rs_to_cgh = D_val 
     
     print("--> Propagating massive RS plane to CGH plane...")
     # RS面(32768x32768)からCGH面へ高解像度のまま伝搬
     cgh_obj_complex = propagate_asm(u_RS_padded, z_rs_to_cgh, wavelength, pitch)
     
-    print("--> Downsampling full massive plane to SLM resolution...")
-    # 中央の抽出を行わず、32768x32768の全領域を1080x1080へと直接リサイズする
-    real_resized = cv2.resize(np.real(cgh_obj_complex).astype(np.float32), (slm_size, slm_size), interpolation=cv2.INTER_AREA)
-    imag_resized = cv2.resize(np.imag(cgh_obj_complex).astype(np.float32), (slm_size, slm_size), interpolation=cv2.INTER_AREA)
-    cgh_obj_slm = real_resized + 1j * imag_resized
+    print("--> Cropping central area (keeping original pitch)...")
+    # リサイズ（平均化）を行わず、物理ピッチを保ったまま SLM サイズ の中心を切り出す
+    cy, cx = N_y_pad // 2, N_x_pad // 2
+    cgh_obj_slm = cgh_obj_complex[
+        cy - slm_size//2 : cy + slm_size//2, 
+        cx - slm_size//2 : cx + slm_size//2
+    ].copy()
     
     del cgh_obj_complex
     gc.collect()
@@ -158,6 +165,9 @@ def generate_reconstruct_and_scan(D_val, output_dir):
     rec_true_raw = None
     rec_true_enhanced = None
     
+    # 【変更点2】物体（サイコロ）の真のピント位置を計算（RS面よりさらに z_rs 奥）
+    target_z = -(D_val + z_rs)
+    
     for z_rec in z_scan_list:
         img_wave = propagate_asm(cgh_illuminated, z_rec, wavelength, slm_pitch)
         
@@ -183,12 +193,13 @@ def generate_reconstruct_and_scan(D_val, output_dir):
         save_img_enhanced_color = cv2.applyColorMap(save_img_enhanced, cv2.COLORMAP_INFERNO)
         cv2.imwrite(os.path.join(dir_enhanced, filename), save_img_enhanced_color)
         
-        if np.isclose(z_rec, -D_val):
+        # 【変更点3】ターゲット位置 (target_z) でサイコロの像を抽出する
+        if np.isclose(z_rec, target_z):
             rec_true_raw = raw_rec_intensity.copy()
             rec_true_enhanced = rec_intensity.copy()
             
     if rec_true_enhanced is None:
-        img_wave_true = propagate_asm(cgh_illuminated, -D_val, wavelength, slm_pitch)
+        img_wave_true = propagate_asm(cgh_illuminated, target_z, wavelength, slm_pitch)
         raw_t = np.abs(img_wave_true)**2
         if np.max(raw_t) > 0: raw_t /= np.max(raw_t)
         rec_true_raw = raw_t.copy()
@@ -198,17 +209,16 @@ def generate_reconstruct_and_scan(D_val, output_dir):
         rec_true_enhanced = np.clip(rec_t / vmax_val_t, 0.0, 1.0) if vmax_val_t > 0 else np.zeros_like(rec_t)
 
     print("--> Scan complete.")
-    # 生データも返すように変更
-    return cgh_phase_binary, rec_true_raw, rec_true_enhanced
+    return slm_8bit, rec_true_raw, rec_true_enhanced
 
 # =====================================================================
 # 5. 計算実行
 # =====================================================================
 # D = 10mm (3つの戻り値を受け取る)
-cgh_10, img_10_true_raw, img_10_true_enh = generate_reconstruct_and_scan(10e-3, "Dice_z_scan_D10mm")
+cgh_10, img_10_true_raw, img_10_true_enh = generate_reconstruct_and_scan(50e-3, "Mask_Dice_z_scan_D50mm_binary")
 
-# D = 100mm (今回はプロットしませんが、ファイル保存のために実行・取得はします)
-cgh_100, img_100_true_raw, img_100_true_enh = generate_reconstruct_and_scan(100e-3, "Dice_z_scan_D100mm")
+# D = 50mm (今回はプロットしませんが、ファイル保存のために実行・取得はします)
+#cgh_50, img_50_true_raw, img_50_true_enh = generate_reconstruct_and_scan(50e-3, "Dice_z_scan_D50mm")
 
 # =====================================================================
 # 6. プロット (3枚並べ)
