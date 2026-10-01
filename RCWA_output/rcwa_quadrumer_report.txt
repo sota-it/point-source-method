@@ -1,0 +1,4 @@
+quadrumer: s1=100nm, s2=125nm, s3=150nm, s4=100nm, g=175nm, t=350nm
+case | theta_sub[deg] | eta(+θ→normal)[%] | eta(-θ→normal)[%] | ratio
+Paper (633 nm, P = 700 nm, a-Si 3.19+0.02i) | 38.58 | 1.760 | 33.897 | 19.3
+This work (532 nm, P = 2 um), a-Si 3.19+0.02i | 10.57 | 0.165 | 0.139 | 1.2
