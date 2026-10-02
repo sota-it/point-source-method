@@ -366,7 +366,7 @@ for r0 in range(0, N_y_pad, block_rows):
                     nb_keep[-1] = False
                 if dj == -1:
                     nb_keep[0] = False
-                ov = (np.abs(dj * P + nb_dx - dx) < w) & (np.abs(P + nb_dy - dy) < w) & nb_keep
+                ov = (np.abs(dj * P + nb_dx - dx) < w) & (np.abs(-P + nb_dy - dy) < w) & nb_keep
                 cand &= ~ov
         ov_left = np.zeros(N_x_pad, dtype=bool)
         ov_left[1:] = (np.abs(P + dx[1:] - dx[:-1]) < w) & (np.abs(dy[1:] - dy[:-1]) < w)
